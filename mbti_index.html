@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Discover Your MBTI Type</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #17181c;
+      --muted: #747783;
+      --line: #e6e7ec;
+      --accent: #6d5dfc;
+      --accent-soft: #eeecff;
+      --good: #178a55;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    }
+    .app { max-width: 620px; margin: 0 auto; padding: 22px 18px 34px; }
+    .hero { padding: 10px 2px 20px; }
+    .eyebrow { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .08em; text-transform: uppercase; }
+    h1 { font-size: 30px; line-height: 1.08; margin: 8px 0 10px; letter-spacing: -.03em; }
+    .intro { color: var(--muted); line-height: 1.5; margin: 0; }
+    .progress-wrap { margin: 4px 0 20px; }
+    .progress-meta { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:8px; }
+    .progress { height: 7px; background: #e5e6eb; border-radius: 99px; overflow:hidden; }
+    .progress > div { height:100%; width:0; background:var(--accent); border-radius:99px; transition:width .25s ease; }
+    .question-card, .result-card {
+      background: var(--card); border:1px solid var(--line); border-radius:22px; padding:20px;
+      box-shadow: 0 8px 28px rgba(30,32,40,.06);
+    }
+    .question-number { color:var(--muted); font-size:13px; font-weight:700; margin-bottom:8px; }
+    .question { font-size:21px; line-height:1.25; font-weight:750; margin:0 0 18px; }
+    .answers { display:grid; gap:10px; }
+    button.answer, button.primary {
+      width:100%; border:0; border-radius:15px; padding:15px 16px; text-align:left; font:inherit;
+      cursor:pointer; -webkit-tap-highlight-color: transparent;
+    }
+    button.answer {
+      background:#f7f7fa; color:var(--text); border:1px solid var(--line); line-height:1.35;
+      transition: transform .08s ease, border-color .12s ease, background .12s ease;
+    }
+    button.answer:active { transform:scale(.985); }
+    button.answer:hover { border-color:#c9c7f6; background:#faf9ff; }
+    button.primary {
+      background:var(--accent); color:white; text-align:center; font-weight:750; margin-top:14px;
+    }
+    .hidden { display:none !important; }
+    .result-type { font-size:48px; font-weight:850; letter-spacing:-.05em; color:var(--accent); }
+    .result-title { font-size:24px; font-weight:800; margin-top:2px; }
+    .result-desc { color:var(--muted); line-height:1.55; margin:10px 0 18px; }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 18px; }
+    .chip { background:var(--accent-soft); color:var(--text); padding:8px 10px; border-radius:999px; font-size:13px; font-weight:650; }
+    .section-title { font-size:14px; font-weight:800; margin:18px 0 7px; }
+    .small { color:var(--muted); font-size:13px; line-height:1.5; }
+    .score-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:12px 0; }
+    .score { background:#f7f7fa; border:1px solid var(--line); border-radius:12px; padding:10px; text-align:center; }
+    .score b { display:block; font-size:16px; }
+    .score span { font-size:12px; color:var(--muted); }
+    .footer-note { text-align:center; color:var(--muted); font-size:12px; margin-top:16px; line-height:1.45; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <section id="intro" class="hero">
+    <div class="eyebrow">MBTI • Personality Quiz</div>
+    <h1>Discover Your MBTI Personality Type</h1>
+    <p class="intro">Answer 20 questions about everyday situations, communication and decision-making. There are no right or wrong answers — choose what feels most natural to you.</p>
+    <button id="start" class="primary">Start the test</button>
+  </section>
+
+  <section id="quiz" class="hidden">
+    <div class="progress-wrap">
+      <div class="progress-meta"><span id="counter">Question 1 of 20</span><span id="percent">5%</span></div>
+      <div class="progress"><div id="bar"></div></div>
+    </div>
+    <div class="question-card">
+      <div id="qnum" class="question-number"></div>
+      <h2 id="question" class="question"></h2>
+      <div id="answers" class="answers"></div>
+    </div>
+  </section>
+
+  <section id="result" class="hidden">
+    <div class="result-card">
+      <div class="eyebrow">Your result</div>
+      <div id="type" class="result-type"></div>
+      <div id="title" class="result-title"></div>
+      <p id="desc" class="result-desc"></p>
+      <div id="chips" class="chips"></div>
+
+      <div class="section-title">Communication style</div>
+      <div id="communication" class="small"></div>
+
+      <div class="section-title">Often typed as</div>
+      <div id="character" class="small"></div>
+
+      <div class="section-title">Your four preferences</div>
+      <div id="scores" class="score-grid"></div>
+
+      <p class="footer-note">MBTI is a personality framework, not a diagnosis. Fictional characters are commonly interpreted as these types, not officially assigned.</p>
+      <button id="again" class="primary">Take the test again</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    if (tg.setHeaderColor) tg.setHeaderColor("#f6f7fb");
+    if (tg.setBackgroundColor) tg.setBackgroundColor("#f6f7fb");
+  }
+
+  const questions = [
+    // E / I
+    {q:"You arrive at a party where you know almost nobody. What are you most likely to do?", a:[
+      ["Start talking to people almost immediately and see where the conversations go.","E"],
+      ["Find one person who seems interesting and start a conversation.","E"],
+      ["Stay close to someone you already know and gradually join other conversations.","I"],
+      ["Observe the room first and wait until you feel comfortable enough to approach someone.","I"]
+    ]},
+    {q:"After a very busy week, what sounds most appealing?", a:[
+      ["Going out with friends and doing something spontaneous.","E"],
+      ["Meeting one or two close friends and having a relaxed evening.","E"],
+      ["Spending the evening alone, watching something or doing your own thing.","I"],
+      ["Having plenty of time completely to yourself with no social plans.","I"]
+    ]},
+    {q:"You have an idea during a group discussion. What do you usually do?", a:[
+      ["Say it immediately, even if you are still figuring it out.","E"],
+      ["Mention it and develop the idea together with the group.","E"],
+      ["Think about it for a while before deciding whether it is worth saying.","I"],
+      ["Keep it to yourself until you have fully formed the idea.","I"]
+    ]},
+    {q:"When you are learning something new, you usually prefer to…", a:[
+      ["Talk about it with someone and learn through discussion.","E"],
+      ["Try it with other people and exchange ideas as you go.","E"],
+      ["Explore it on your own and make sense of it privately.","I"],
+      ["Study it quietly first, then share your thoughts later.","I"]
+    ]},
+    {q:"At a university event, you would rather…", a:[
+      ["Meet lots of new people and collect interesting contacts.","E"],
+      ["Have several short conversations with different people.","E"],
+      ["Have a meaningful conversation with one or two people.","I"],
+      ["Stay with familiar people or leave when you feel socially tired.","I"]
+    ]},
+
+    // S / N
+    {q:"When someone explains a new topic, what helps you most?", a:[
+      ["Concrete examples and practical details.","S"],
+      ["A clear step-by-step explanation of how it works.","S"],
+      ["The big picture and the idea behind it.","N"],
+      ["Connections, possibilities and what it could become.","N"]
+    ]},
+    {q:"You are planning a trip. What do you focus on first?", a:[
+      ["Exact places, transport, times and prices.","S"],
+      ["A realistic schedule and practical details.","S"],
+      ["The overall experience and interesting possibilities.","N"],
+      ["The kind of story or adventure you want the trip to become.","N"]
+    ]},
+    {q:"Which statement sounds more like you?", a:[
+      ["I trust information I can observe and verify.","S"],
+      ["I prefer facts that have clear evidence behind them.","S"],
+      ["I often notice patterns and meanings that are not immediately obvious.","N"],
+      ["I naturally think about what might happen next.","N"]
+    ]},
+    {q:"When watching a film, you tend to notice…", a:[
+      ["Specific details, realistic actions and what literally happens.","S"],
+      ["The setting, costumes, dialogue and concrete events.","S"],
+      ["Symbolism, themes and hidden meanings.","N"],
+      ["Possible interpretations and connections to other ideas.","N"]
+    ]},
+    {q:"A friend tells you about a problem. Your first instinct is to…", a:[
+      ["Ask what exactly happened and what can be done now.","S"],
+      ["Focus on the facts and practical options.","S"],
+      ["Think about what the situation might mean for them.","N"],
+      ["Look for the deeper pattern behind what is happening.","N"]
+    ]},
+
+    // T / F
+    {q:"Your friend asks for advice about a difficult decision. You are most likely to…", a:[
+      ["Point out the most logical option, even if it is uncomfortable.","T"],
+      ["Compare pros and cons and help them choose rationally.","T"],
+      ["First consider how each option will affect everyone emotionally.","F"],
+      ["Ask what feels right to them and what matters personally.","F"]
+    ]},
+    {q:"During a group project, two people disagree. You tend to…", a:[
+      ["Focus on the strongest argument and what is objectively effective.","T"],
+      ["Try to identify the most reasonable solution.","T"],
+      ["Try to make sure nobody feels ignored or dismissed.","F"],
+      ["Look for a compromise that preserves the relationships in the group.","F"]
+    ]},
+    {q:"Which compliment would mean more to you?", a:[
+      ["“You are extremely competent.”","T"],
+      ["“You always make smart decisions.”","T"],
+      ["“You make people feel understood.”","F"],
+      ["“You are a genuinely caring person.”","F"]
+    ]},
+    {q:"When someone criticizes your work, your first reaction is usually…", a:[
+      ["Is the criticism logically correct?","T"],
+      ["What exactly should I change to improve the result?","T"],
+      ["Why did they react this way, and how did it make me feel?","F"],
+      ["Whether the way they said it was fair and considerate.","F"]
+    ]},
+    {q:"When making an important choice, you trust…", a:[
+      ["Logic, evidence and consistency.","T"],
+      ["Objective consequences and what makes the most sense.","T"],
+      ["Your values and how the choice affects people.","F"],
+      ["Your feelings and what feels authentic to you.","F"]
+    ]},
+
+    // J / P
+    {q:"You have an assignment due next Friday. What do you usually do?", a:[
+      ["Make a plan and finish it early.","J"],
+      ["Set milestones so I know I am on track.","J"],
+      ["Keep it in mind and work on it when I feel ready.","P"],
+      ["Probably do most of it when the deadline gets close.","P"]
+    ]},
+    {q:"Your weekend suddenly becomes completely free. You feel…", a:[
+      ["Happy to finally organize the things I wanted to do.","J"],
+      ["Relieved because I can make a flexible plan.","J"],
+      ["Excited because I can decide spontaneously.","P"],
+      ["Best when I have no schedule at all.","P"]
+    ]},
+    {q:"Which workspace feels more comfortable?", a:[
+      ["Everything has its place and I know what I need to do next.","J"],
+      ["Organized enough that I can easily find everything.","J"],
+      ["A little messy, but I know where everything is.","P"],
+      ["Flexible and changing depending on what I am working on.","P"]
+    ]},
+    {q:"A plan you made changes at the last minute. You usually…", a:[
+      ["Feel annoyed because you had already decided what would happen.","J"],
+      ["Quickly make a new plan and restore some structure.","J"],
+      ["Adapt easily and see what happens.","P"],
+      ["Often enjoy the unexpected change.","P"]
+    ]},
+    {q:"When you travel, you prefer to…", a:[
+      ["Know where you will be and what you are doing each day.","J"],
+      ["Have the important details booked in advance.","J"],
+      ["Choose what to do depending on your mood.","P"],
+      ["Leave plenty of room for spontaneous discoveries.","P"]
+    ]}
+  ];
+
+  const results = {
+    INTJ:{title:"The Architect",desc:"Independent, strategic and future-oriented. You like understanding systems, improving them and working toward a clear long-term goal.",chips:["Strategic","Independent","Analytical"],communication:"You usually prefer concise, purposeful communication. Give you time to think and get to the point.",character:"Bruce Wayne / Batman"},
+    INTP:{title:"The Logician",desc:"Curious, analytical and driven by ideas. You enjoy exploring how things work and questioning assumptions.",chips:["Curious","Logical","Inventive"],communication:"You tend to explore ideas rather than rush to conclusions. Others may need to know that thinking time is not disinterest.",character:"Sherlock Holmes"},
+    ENTJ:{title:"The Commander",desc:"Decisive, organized and goal-oriented. You naturally look for ways to make plans more efficient and move people toward a result.",chips:["Decisive","Strategic","Driven"],communication:"You often communicate directly and focus on outcomes. Adding a little emotional context can make your message easier to receive.",character:"Miranda Priestly"},
+    ENTP:{title:"The Debater",desc:"Energetic, inventive and fascinated by possibilities. You enjoy challenging ideas and finding unexpected solutions.",chips:["Inventive","Energetic","Curious"],communication:"You may treat disagreement as intellectual play. Make clear when you are debating an idea rather than criticizing a person.",character:"Tony Stark"},
+    INFJ:{title:"The Advocate",desc:"Insightful, idealistic and focused on meaning. You often notice what people need beneath what they say.",chips:["Insightful","Idealistic","Empathetic"],communication:"You tend to communicate with depth and nuance. Clear, direct wording can help others understand what you mean.",character:"Remus Lupin"},
+    INFP:{title:"The Mediator",desc:"Values-driven, imaginative and empathetic. You care about authenticity and tend to see many sides of a situation.",chips:["Empathetic","Creative","Idealistic"],communication:"You often choose gentle, personal communication. When something matters, saying it directly can prevent misunderstandings.",character:"Luna Lovegood"},
+    ENFJ:{title:"The Protagonist",desc:"Warm, organized and people-focused. You often notice group dynamics and naturally encourage others.",chips:["Supportive","Charismatic","Organized"],communication:"You are usually attentive to how messages affect people. Remember that not everyone wants advice or emotional discussion immediately.",character:"Wonder Woman"},
+    ENFP:{title:"The Campaigner",desc:"Curious, enthusiastic and spontaneous. You are energized by ideas, people and the possibility of something new.",chips:["Enthusiastic","Creative","Open-minded"],communication:"You often communicate with energy and many ideas. Slowing down and letting quieter people respond can improve group communication.",character:"Rapunzel"},
+    ISTJ:{title:"The Logistician",desc:"Reliable, practical and responsible. You value clear expectations, evidence and doing things properly.",chips:["Reliable","Practical","Thorough"],communication:"You tend to appreciate precise communication and clear responsibilities. Explain when a plan changes rather than assuming others will adapt.",character:"Hermione Granger"},
+    ISFJ:{title:"The Defender",desc:"Loyal, considerate and dependable. You often notice practical needs and quietly make sure people are supported.",chips:["Loyal","Caring","Reliable"],communication:"You may show care through actions more than words. Tell others what you need too, rather than always accommodating them.",character:"Samwise Gamgee"},
+    ESTJ:{title:"The Executive",desc:"Practical, organized and decisive. You like clear standards, efficient teamwork and visible progress.",chips:["Organized","Direct","Responsible"],communication:"You usually prefer direct and structured communication. A softer opening can help when feedback is sensitive.",character:"Erwin Smith"},
+    ESFJ:{title:"The Consul",desc:"Sociable, supportive and attentive to the needs of a group. You often help create a sense of belonging.",chips:["Sociable","Supportive","Practical"],communication:"You are often sensitive to social cues. Be careful not to assume everyone wants the same level of involvement.",character:"Monica Geller"},
+    ISTP:{title:"The Virtuoso",desc:"Independent, observant and practical. You like figuring things out hands-on and solving problems efficiently.",chips:["Practical","Independent","Calm"],communication:"You may prefer short, factual communication. Let people know what you think instead of assuming your actions are self-explanatory.",character:"Black Widow"},
+    ISFP:{title:"The Adventurer",desc:"Gentle, flexible and experience-oriented. You value freedom, authenticity and personal expression.",chips:["Authentic","Flexible","Creative"],communication:"You often communicate through tone, actions and personal experience. Be explicit when someone needs a clear answer.",character:"Hiccup"},
+    ESTP:{title:"The Entrepreneur",desc:"Energetic, adaptable and action-oriented. You tend to learn by doing and respond quickly to changing situations.",chips:["Bold","Adaptable","Action-oriented"],communication:"You often keep communication lively and practical. Give quieter people time before moving on.",character:"Han Solo"},
+    ESFP:{title:"The Entertainer",desc:"Warm, spontaneous and expressive. You often bring energy to a group and enjoy making experiences memorable.",chips:["Expressive","Spontaneous","Sociable"],communication:"You tend to communicate with emotion and enthusiasm. Watch for moments when someone needs a calmer, more private conversation.",character:"Barbie"}
+  };
+
+  const intro = document.getElementById("intro");
+  const quiz = document.getElementById("quiz");
+  const result = document.getElementById("result");
+  const qnum = document.getElementById("qnum");
+  const question = document.getElementById("question");
+  const answers = document.getElementById("answers");
+  const counter = document.getElementById("counter");
+  const percent = document.getElementById("percent");
+  const bar = document.getElementById("bar");
+
+  let index = 0;
+  let picked = [];
+
+  function showQuestion() {
+    const item = questions[index];
+    const n = index + 1;
+    qnum.textContent = "Question " + n;
+    question.textContent = item.q;
+    counter.textContent = "Question " + n + " of " + questions.length;
+    const pct = Math.round((n / questions.length) * 100);
+    percent.textContent = pct + "%";
+    bar.style.width = pct + "%";
+    answers.innerHTML = "";
+    item.a.forEach(([text, letter]) => {
+      const btn = document.createElement("button");
+      btn.className = "answer";
+      btn.type = "button";
+      btn.textContent = text;
+      btn.addEventListener("click", () => {
+        picked[index] = letter;
+        index++;
+        if (index < questions.length) showQuestion();
+        else finish();
+      });
+      answers.appendChild(btn);
+    });
+  }
+
+  function finish() {
+    const score = {E:0,I:0,S:0,N:0,T:0,F:0,J:0,P:0};
+    picked.forEach(x => { if (score[x] !== undefined) score[x]++; });
+    const type =
+      (score.E >= score.I ? "E":"I") +
+      (score.S >= score.N ? "S":"N") +
+      (score.T >= score.F ? "T":"F") +
+      (score.J >= score.P ? "J":"P");
+    const r = results[type];
+
+    document.getElementById("type").textContent = type;
+    document.getElementById("title").textContent = r.title;
+    document.getElementById("desc").textContent = r.desc;
+    document.getElementById("communication").textContent = r.communication;
+    document.getElementById("character").textContent = r.character;
+    const chips = document.getElementById("chips");
+    chips.innerHTML = "";
+    r.chips.forEach(c => { const s=document.createElement("span"); s.className="chip"; s.textContent=c; chips.appendChild(s); });
+
+    const scores = document.getElementById("scores");
+    const pairs = [["E","I"],["S","N"],["T","F"],["J","P"]];
+    scores.innerHTML = "";
+    pairs.forEach(([a,b]) => {
+      const total = score[a] + score[b];
+      const chosen = score[a] >= score[b] ? a : b;
+      const div = document.createElement("div");
+      div.className="score";
+      div.innerHTML = "<b>"+chosen+"</b><span>"+score[a]+"/"+total+" vs "+score[b]+"/"+total+"</span>";
+      scores.appendChild(div);
+    });
+
+    quiz.classList.add("hidden");
+    intro.classList.add("hidden");
+    result.classList.remove("hidden");
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  document.getElementById("start").addEventListener("click", () => {
+    index=0; picked=[];
+    intro.classList.add("hidden");
+    result.classList.add("hidden");
+    quiz.classList.remove("hidden");
+    showQuestion();
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+
+  document.getElementById("again").addEventListener("click", () => {
+    result.classList.add("hidden");
+    intro.classList.remove("hidden");
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+})();
+</script>
+</body>
+</html>
